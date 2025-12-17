@@ -1,38 +1,68 @@
-// Блок ссылок на элементы интерфейса для управления вкладками, формами и отчётами
-const toc = document.querySelector(".toc");
-const tocToggle = document.querySelector(".toc-toggle");
-const tabButtons = document.querySelectorAll(".tab-btn");
-const tabPanels = document.querySelectorAll(".tab-panel");
-const datasetForm = document.getElementById("dataset-form");
-const datasetList = document.getElementById("dataset-list");
-const datasetSummary = document.getElementById("dataset-summary");
-const recognitionSelect = document.getElementById("recognition-source");
-const addSampleSetBtn = document.getElementById("add-sample-set");
-const clearDatasetBtn = document.getElementById("clear-dataset");
-const trainingForm = document.getElementById("training-form");
-const trainingLog = document.getElementById("training-log");
-const inputSizeEl = document.getElementById("input-size");
-const classCountEl = document.getElementById("class-count");
-const epochCountEl = document.getElementById("epoch-count");
-const finalMseEl = document.getElementById("final-mse");
-const weightsTable = document.getElementById("weights-table");
-const copyWeightsBtn = document.getElementById("copy-weights");
-const errorChart = document.getElementById("error-chart");
-const recognitionForm = document.getElementById("recognition-form");
-const recognitionPreview = document.getElementById("recognition-preview");
-const recognitionOutputs = document.getElementById("recognition-outputs");
-const recognizedLabelEl = document.getElementById("recognized-label");
-const experimentsTable = document.getElementById("experiments-table");
-const experimentNotes = document.getElementById("experiment-notes");
+/**
+ * CYBER-PERCEPTRON SYSTEM KERNEL v2.0
+ * -----------------------------------
+ * Модуль управления нейросетевым моделированием.
+ * Реализует логику однослойного персептрона, обработку данных и визуализацию.
+ *
+ * @author Cyber-Lab AI Assistant
+ * @version 2.0.0
+ */
 
-// Ключи localStorage для разных сущностей приложения
+"use strict";
+
+/* ==========================================================================
+   DOM ELEMENTS & INTERFACE BINDINGS
+   ========================================================================== */
+const UI = {
+  // Navigation & Layout
+  tabButtons: document.querySelectorAll(".tab-btn"),
+  tabPanels: document.querySelectorAll(".tab-panel"),
+  
+  // Dataset Module
+  datasetForm: document.getElementById("dataset-form"),
+  datasetList: document.getElementById("dataset-list"),
+  datasetSummary: document.getElementById("dataset-summary"),
+  addSampleSetBtn: document.getElementById("add-sample-set"),
+  clearDatasetBtn: document.getElementById("clear-dataset"),
+  
+  // Training Module
+  trainingForm: document.getElementById("training-form"),
+  trainingLog: document.getElementById("training-log"),
+  inputSizeEl: document.getElementById("input-size"),
+  classCountEl: document.getElementById("class-count"),
+  epochCountEl: document.getElementById("epoch-count"),
+  finalMseEl: document.getElementById("final-mse"),
+  weightsTable: document.getElementById("weights-table"),
+  copyWeightsBtn: document.getElementById("copy-weights"),
+  errorChart: document.getElementById("error-chart"),
+  
+  // Recognition Module
+  recognitionForm: document.getElementById("recognition-form"),
+  recognitionSelect: document.getElementById("recognition-source"),
+  recognitionPreview: document.getElementById("recognition-preview"),
+  recognitionOutputs: document.getElementById("recognition-outputs"),
+  recognizedLabelEl: document.getElementById("recognized-label"),
+  
+  // Experiments & Reports
+  experimentsTable: document.getElementById("experiments-table"),
+  experimentNotes: document.getElementById("experiment-notes"),
+};
+
+/* ==========================================================================
+   STATE MANAGEMENT
+   ========================================================================== */
 const STORAGE_KEYS = {
+  dataset: "cyber-perceptron-dataset",
+  experiments: "cyber-perceptron-experiments",
+  notes: "cyber-perceptron-notes",
+};
+
+const LEGACY_KEYS = {
   dataset: "perceptron-dataset",
   experiments: "perceptron-experiments",
   notes: "perceptron-notes",
 };
 
-// Глобальное состояние приложения: выборка, параметры и история экспериментов
 const state = {
   dataset: [],
   imageWidth: 8,
@@ -43,102 +73,113 @@ const state = {
   experiments: [],
 };
 
-// Переключаем состояние бокового оглавления
-if (tocToggle && toc) {
-  tocToggle.addEventListener("click", () => {
-    const isOpen = toc.getAttribute("data-open") === "true";
-    toc.setAttribute("data-open", (!isOpen).toString());
-    tocToggle.setAttribute(
-      "aria-label",
-      isOpen ? "Открыть содержание" : "Закрыть содержание"
-    );
-  });
-}
-
-// Обработчики вкладок интерфейса
-tabButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const tab = btn.dataset.tab;
-    tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
-    tabPanels.forEach((panel) =>
-      panel.classList.toggle("active", panel.dataset.panel === tab)
-    );
-  });
-});
-
-// Точка входа: подтягиваем сохранённые данные и отрисовываем интерфейс
-init();
-
+/* ==========================================================================
+   INITIALIZATION
+   ========================================================================== */
 function init() {
-  // Собираем данные из localStorage и синхронизируем UI
-  loadDatasetFromStorage();
-  loadExperimentsFromStorage();
-  loadNotesFromStorage();
+  migrateLegacyData();
+  loadFromStorage();
+  setupEventListeners();
   renderDataset();
   renderExperiments();
   updateRecognitionOptions();
+  console.log("Кибер-Персептрон Система Онлайн.");
 }
 
-function loadDatasetFromStorage() {
-  // Забираем выборку из localStorage и восстанавливаем размеры изображений
+function loadFromStorage() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.dataset);
-    if (raw) {
-      const parsed = JSON.parse(raw);
+    // Dataset
+    const rawDataset = localStorage.getItem(STORAGE_KEYS.dataset);
+    if (rawDataset) {
+      const parsed = JSON.parse(rawDataset);
       if (Array.isArray(parsed)) {
         state.dataset = parsed;
         if (parsed[0]) {
           state.imageWidth = parsed[0].width;
           state.imageHeight = parsed[0].height;
-          const widthInput = document.getElementById("image-width");
-          const heightInput = document.getElementById("image-height");
-          if (widthInput) widthInput.value = state.imageWidth;
-          if (heightInput) heightInput.value = state.imageHeight;
+          updateInputFields(state.imageWidth, state.imageHeight);
         }
       }
     }
+
+    // Experiments
+    const rawExp = localStorage.getItem(STORAGE_KEYS.experiments);
+    state.experiments = rawExp ? JSON.parse(rawExp) : [];
+
+    // Notes
+    if (UI.experimentNotes) {
+      UI.experimentNotes.value = localStorage.getItem(STORAGE_KEYS.notes) || "";
+    }
   } catch (error) {
-    console.error("Не удалось загрузить выборку:", error);
+    console.error("System Initialization Error:", error);
   }
 }
 
-function saveDataset() {
-  // Перезаписываем хранилище обновлённой выборкой
-  localStorage.setItem(STORAGE_KEYS.dataset, JSON.stringify(state.dataset));
+function updateInputFields(w, h) {
+  const wInput = document.getElementById("image-width");
+  const hInput = document.getElementById("image-height");
+  if (wInput) wInput.value = w;
+  if (hInput) hInput.value = h;
 }
 
-function loadExperimentsFromStorage() {
-  // Пробуем прочитать историю экспериментов, при ошибке начинаем с пустого списка
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.experiments);
-    state.experiments = raw ? JSON.parse(raw) : [];
-  } catch (error) {
-    state.experiments = [];
+function setupEventListeners() {
+  // Navigation
+  if (UI.tocToggle && UI.toc) {
+    UI.tocToggle.addEventListener("click", () => {
+      const isOpen = UI.toc.getAttribute("data-open") === "true";
+      UI.toc.setAttribute("data-open", (!isOpen).toString());
+    });
   }
-}
 
-function saveExperiments() {
-  // Фиксируем новые данные экспериментов в localStorage
-  localStorage.setItem(
-    STORAGE_KEYS.experiments,
-    JSON.stringify(state.experiments)
-  );
-}
+  UI.tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      UI.tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+      UI.tabPanels.forEach((panel) =>
+        panel.classList.toggle("active", panel.dataset.panel === tab)
+      );
+    });
+  });
 
-function loadNotesFromStorage() {
-  // Автосохранение заметок: подтягиваем текст и вешаем обработчик ввода
-  if (!experimentNotes) return;
-  const saved = localStorage.getItem(STORAGE_KEYS.notes);
-  if (saved) experimentNotes.value = saved;
-  experimentNotes.addEventListener("input", () => {
-    localStorage.setItem(STORAGE_KEYS.notes, experimentNotes.value);
+  // Dataset Actions
+  UI.datasetForm?.addEventListener("submit", handleAddSample);
+  UI.addSampleSetBtn?.addEventListener("click", handleAddDemoSet);
+  UI.clearDatasetBtn?.addEventListener("click", handleClearDataset);
+  UI.datasetList?.addEventListener("click", handleRemoveSample);
+
+  // Training Actions
+  UI.trainingForm?.addEventListener("submit", handleTraining);
+  UI.copyWeightsBtn?.addEventListener("click", copyWeightsToClipboard);
+
+  // Recognition Actions
+  UI.recognitionForm?.addEventListener("submit", handleRecognition);
+
+  // Auto-fill label from filename
+  const sampleFile = document.getElementById("sample-file");
+  if (sampleFile) {
+    sampleFile.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      const labelInput = document.getElementById("sample-label");
+      if (file && labelInput && !labelInput.value) {
+        // Remove extension and use as label
+        const name = file.name.replace(/\.[^/.]+$/, "");
+        labelInput.value = name;
+      }
+    });
+  }
+
+  // Auto-save Notes
+  UI.experimentNotes?.addEventListener("input", () => {
+    localStorage.setItem(STORAGE_KEYS.notes, UI.experimentNotes.value);
   });
 }
 
-// Работа с обучающей выборкой: загрузка файлов, демо-наборы и очистка
-datasetForm?.addEventListener("submit", async (event) => {
+/* ==========================================================================
+   DATASET MODULE
+   ========================================================================== */
+async function handleAddSample(event) {
   event.preventDefault();
-  // Собираем параметры изображения и проверяем ввод
+  
   const label = document.getElementById("sample-label")?.value.trim();
   const file = document.getElementById("sample-file")?.files?.[0];
   const width = Number(document.getElementById("image-width")?.value || 8);
@@ -146,430 +187,168 @@ datasetForm?.addEventListener("submit", async (event) => {
   const threshold = Number(document.getElementById("threshold")?.value || 128);
 
   if (!label || !file) {
-    alert("Заполните метку и выберите файл изображения.");
+    alert("СИСТЕМНАЯ ОШИБКА: Отсутствует метка класса или файл.");
     return;
   }
 
   try {
-    // Конвертируем изображение в бинарный вектор и добавляем в состояние
-    const sample = await imageFileToVector(file, width, height, threshold);
-    const entry = {
-      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
-      label,
-      pixels: sample.pixels,
-      preview: sample.preview,
-      width,
-      height,
-      threshold,
-    };
+    const sample = await processImage(file, width, height, threshold);
+    const entry = createSampleEntry(label, sample, width, height, threshold);
+    
     state.dataset.push(entry);
     state.imageWidth = width;
     state.imageHeight = height;
-    saveDataset();
-    // После добавления обновляем статистику и настройки распознавания
-    renderDataset();
-    updateRecognitionOptions();
-    datasetForm.reset();
-    document.getElementById("image-width").value = width;
-    document.getElementById("image-height").value = height;
+    
+    saveState();
+    refreshUI();
+    UI.datasetForm.reset();
+    updateInputFields(width, height);
   } catch (error) {
     console.error(error);
-    alert("Не удалось обработать изображение. Проверьте формат файла.");
+    alert("ОШИБКА ОБРАБОТКИ: Неверный формат изображения.");
   }
-});
+}
 
-addSampleSetBtn?.addEventListener("click", () => {
-  // Добавляем предзаданные образы, чтобы быстро начать эксперименты
-  const samples = buildDemoSamples();
+function handleAddDemoSet() {
+  const samples = buildCyberSamples();
   state.dataset = [...state.dataset, ...samples];
   state.imageWidth = 8;
   state.imageHeight = 8;
-  document.getElementById("image-width").value = 8;
-  document.getElementById("image-height").value = 8;
-  saveDataset();
-  renderDataset();
-  updateRecognitionOptions();
-});
+  updateInputFields(8, 8);
+  saveState();
+  refreshUI();
+}
 
-clearDatasetBtn?.addEventListener("click", () => {
-  // Полностью очищаем выборку и связанные результаты
+function handleClearDataset() {
   if (!state.dataset.length) return;
-  const confirmed = confirm("Удалить текущую обучающую выборку?");
-  if (!confirmed) return;
+  if (!confirm("ПОДТВЕРЖДЕНИЕ ОЧИСТКИ: Удалить все данные обучения?")) return;
+  
   state.dataset = [];
   state.perceptron = null;
   state.history = [];
   state.iterationLog = [];
-  saveDataset();
-  renderDataset();
-  updateRecognitionOptions();
+  
+  saveState();
+  refreshUI();
   resetTrainingOutputs();
   renderErrorChart([]);
-});
+}
 
-datasetList?.addEventListener("click", (event) => {
-  // Удаление конкретного образца по кнопке в карточке
+function handleRemoveSample(event) {
   const target = event.target;
   if (target.matches("button[data-remove]")) {
     const id = target.getAttribute("data-remove");
     state.dataset = state.dataset.filter((item) => item.id !== id);
-    saveDataset();
-    renderDataset();
-    updateRecognitionOptions();
+    saveState();
+    refreshUI();
   }
-});
+}
+
+function createSampleEntry(label, sample, width, height, threshold) {
+  return {
+    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
+    label,
+    pixels: sample.pixels,
+    preview: sample.preview,
+    width,
+    height,
+    threshold,
+  };
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEYS.dataset, JSON.stringify(state.dataset));
+  localStorage.setItem(STORAGE_KEYS.experiments, JSON.stringify(state.experiments));
+}
+
+function refreshUI() {
+  renderDataset();
+  updateRecognitionOptions();
+}
 
 function renderDataset() {
-  // Обновляем список образцов и краткую статистику по ним
   const total = state.dataset.length;
   const classCount = new Set(state.dataset.map((s) => s.label)).size;
-  datasetSummary.textContent = `${total} изображений • ${classCount} классов`;
+  UI.datasetSummary.textContent = `ОБРАЗЦЫ: ${total} | КЛАССЫ: ${classCount}`;
 
   if (!total) {
-    datasetList.classList.add("empty");
-    datasetList.innerHTML =
-      "<p>Добавьте изображения или загрузите демо-набор.</p>";
+    UI.datasetList.classList.add("empty");
+    UI.datasetList.innerHTML = "<p>НЕТ ДАННЫХ. Загрузите образцы или инициализируйте демо-набор.</p>";
     return;
   }
 
-  datasetList.classList.remove("empty");
-  datasetList.innerHTML = state.dataset
+  UI.datasetList.classList.remove("empty");
+  UI.datasetList.innerHTML = state.dataset
     .map(
       (sample, index) => `
       <article class="sample-card">
         <img src="${sample.preview}" alt="${sample.label}" />
         <div>
-          <strong>${index + 1}. ${sample.label}</strong>
-          <p>${sample.width}×${sample.height} • ${sample.pixels.filter((p) => p === 1).length} белых пикселей</p>
+          <strong>[${index + 1}] ${sample.label}</strong>
+          <p>${sample.width}x${sample.height} | АКТ: ${sample.pixels.filter((p) => p === 1).length}</p>
         </div>
-        <button data-remove="${sample.id}">Удалить</button>
+        <button data-remove="${sample.id}">УДАЛИТЬ</button>
       </article>
     `
     )
     .join("");
 }
 
-function updateRecognitionOptions() {
-  // Список для выпадающего выбора уже загруженных образов
-  recognitionSelect.innerHTML =
-    '<option value="">— Не выбрано —</option>' +
-    state.dataset
-      .map(
-        (item) => `<option value="${item.id}">${item.label} (${item.width}×${
-          item.height
-        })</option>`
-      )
-      .join("");
-}
-
-// Training
-trainingForm?.addEventListener("submit", (event) => {
+/* ==========================================================================
+   TRAINING MODULE
+   ========================================================================== */
+function handleTraining(event) {
   event.preventDefault();
+  
   if (state.dataset.length < 2) {
-    alert("Добавьте минимум два изображения из разных классов.");
+    alert("ОШИБКА: Недостаточно данных. Требуется минимум 2 образца.");
     return;
   }
-  if (state.dataset.length < 10) {
-    alert("Согласно требованию необходимо минимум 10 изображений.");
-    return;
-  }
-
+  
+  // Validate dimensions
   const inputLengths = new Set(state.dataset.map((s) => s.pixels.length));
   if (inputLengths.size !== 1) {
-    alert("Все изображения должны иметь одинаковый размер для обучения.");
+    alert("ОШИБКА: Несовпадение размеров. Все образцы должны быть одного размера.");
     return;
   }
 
-  const learningRate = Number(document.getElementById("learning-rate").value);
-  const maxEpochs = Number(document.getElementById("max-epochs").value);
-  const targetError = Number(document.getElementById("target-error").value);
-  const weightRange = Number(document.getElementById("weight-range").value);
-  const activationThreshold = Number(
-    document.getElementById("activation-threshold").value
-  );
-
   const options = {
-    learningRate,
-    maxEpochs,
-    targetError,
-    weightRange,
-    activationThreshold,
+    learningRate: Number(document.getElementById("learning-rate").value),
+    maxEpochs: Number(document.getElementById("max-epochs").value),
+    targetError: Number(document.getElementById("target-error").value),
+    weightRange: Number(document.getElementById("weight-range").value),
+    activationThreshold: Number(document.getElementById("activation-threshold").value),
   };
 
   const result = trainPerceptron(state.dataset, options);
+  
   state.perceptron = {
     neurons: result.neurons,
-    activationThreshold,
+    activationThreshold: options.activationThreshold,
   };
   state.history = result.history;
   state.iterationLog = result.iterationLog;
 
-  inputSizeEl.textContent = state.dataset[0].pixels.length;
-  classCountEl.textContent = Object.keys(result.neurons).length;
-  epochCountEl.textContent = result.epochs;
-  finalMseEl.textContent = result.mse.toFixed(5);
+  // Update Stats
+  UI.inputSizeEl.textContent = state.dataset[0].pixels.length;
+  UI.classCountEl.textContent = Object.keys(result.neurons).length;
+  UI.epochCountEl.textContent = result.epochs;
+  UI.finalMseEl.textContent = result.mse.toFixed(5);
 
   renderTrainingLog(state.iterationLog);
   renderWeights(result.neurons);
   renderErrorChart(result.history);
   appendExperiment(result);
-  alert("Обучение завершено. Проверьте результаты и переходите к распознаванию.");
-});
-
-function resetTrainingOutputs() {
-  inputSizeEl.textContent = "0";
-  classCountEl.textContent = "0";
-  epochCountEl.textContent = "0";
-  finalMseEl.textContent = "—";
-  trainingLog.innerHTML =
-    "<p>Запустите обучение, чтобы увидеть прогресс по итерациям.</p>";
-  weightsTable.innerHTML =
-    "<p>Результаты появятся после успешного обучения.</p>";
+  
+  alert("ОБУЧЕНИЕ ЗАВЕРШЕНО. Обновлена конфигурация нейронной сети.");
 }
 
-function renderTrainingLog(entries) {
-  if (!entries.length) {
-    trainingLog.innerHTML =
-      '<p class="placeholder">Запустите обучение, чтобы увидеть прогресс по итерациям.</p>';
-    return;
-  }
-  const rows = entries
-    .map(
-      (entry) => `
-        <tr>
-          <td>${entry.epoch}</td>
-          <td>${entry.sample}</td>
-          <td>${entry.neuron}</td>
-          <td>${entry.net}</td>
-          <td>${entry.error}</td>
-          <td>[${entry.weights.join(", ")}]</td>
-        </tr>
-      `
-    )
-    .join("");
-  trainingLog.innerHTML = `
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Эпоха</th>
-            <th>Образ</th>
-            <th>Нейрон</th>
-            <th>net</th>
-            <th>Ошибка</th>
-            <th>Δw (первые)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function renderWeights(neurons) {
-  const labels = Object.keys(neurons);
-  if (!labels.length) {
-    weightsTable.innerHTML =
-      "<p>Результаты появятся после успешного обучения.</p>";
-    return;
-  }
-
-  const rows = labels
-    .map((label) => {
-      const neuron = neurons[label];
-      const preview = neuron.weights
-        .slice(0, 6)
-        .map((w) => Number(w.toFixed(3)))
-        .join(", ");
-      return `
-        <tr>
-          <td>${label}</td>
-          <td>${Number(neuron.bias.toFixed(3))}</td>
-          <td>${preview} ...</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  weightsTable.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Класс</th>
-          <th>Bias</th>
-          <th>Первые веса</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
-}
-
-copyWeightsBtn?.addEventListener("click", async () => {
-  if (!state.perceptron) {
-    alert("Сначала обучите персептрон.");
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(
-      JSON.stringify(state.perceptron, null, 2)
-    );
-    alert("Параметры скопированы в буфер обмена.");
-  } catch (error) {
-    console.error(error);
-    alert("Не удалось скопировать данные.");
-  }
-});
-
-// Recognition
-recognitionForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!state.perceptron) {
-    alert("Сначала запустите обучение персептрона.");
-    return;
-  }
-
-  const selectedId = recognitionSelect.value;
-  const file = document.getElementById("recognition-file")?.files?.[0];
-  let vector;
-  let preview;
-  let width = state.imageWidth;
-  let height = state.imageHeight;
-
-  if (selectedId) {
-    const sample = state.dataset.find((item) => item.id === selectedId);
-    if (!sample) {
-      alert("Выбранное изображение не найдено.");
-      return;
-    }
-    vector = sample.pixels;
-    preview = sample.preview;
-    width = sample.width;
-    height = sample.height;
-  } else if (file) {
-    try {
-      const processed = await imageFileToVector(
-        file,
-        width,
-        height,
-        Number(document.getElementById("threshold")?.value || 128)
-      );
-      vector = processed.pixels;
-      preview = processed.preview;
-    } catch (error) {
-      alert("Не удалось обработать изображение для распознавания.");
-      return;
-    }
-  } else {
-    alert("Выберите образ из выборки или загрузите файл.");
-    return;
-  }
-
-  const results = predict(state.perceptron, vector);
-  recognizedLabelEl.textContent = results.predicted;
-  renderRecognitionOutputsTable(results.detail);
-  renderRecognitionPreview(preview, width, height);
-});
-
-function renderRecognitionPreview(preview, width, height) {
-  if (!preview) {
-    recognitionPreview.innerHTML = "<p>Изображение ещё не выбрано.</p>";
-    return;
-  }
-  recognitionPreview.innerHTML = `
-    <div>
-      <img src="${preview}" width="${width * 6}" height="${
-    height * 6
-  }" alt="Распознаваемое изображение" />
-    </div>
-  `;
-}
-
-function renderRecognitionOutputsTable(detail) {
-  if (!detail.length) {
-    recognitionOutputs.innerHTML =
-      "<p>После запуска появятся значения нейронов до/после активации.</p>";
-    return;
-  }
-  recognitionOutputs.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Класс</th>
-          <th>net</th>
-          <th>f(net)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${detail
-          .map(
-            (item) => `
-          <tr>
-            <td>${item.label}</td>
-            <td>${item.net.toFixed(4)}</td>
-            <td>${item.output}</td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
-    </table>
-  `;
-}
-
-// Experiments
-function appendExperiment(result) {
-  const entry = {
-    id: Date.now(),
-    timestamp: new Date().toLocaleString(),
-    datasetSize: state.dataset.length,
-    classes: Object.keys(result.neurons).length,
-    epochs: result.epochs,
-    mse: Number(result.mse.toFixed(5)),
-    accuracy: Number((result.accuracy * 100).toFixed(1)),
-  };
-  state.experiments.unshift(entry);
-  state.experiments = state.experiments.slice(0, 12);
-  saveExperiments();
-  renderExperiments();
-}
-
-function renderExperiments() {
-  if (!state.experiments.length) {
-    experimentsTable.innerHTML = `
-      <tr>
-        <td colspan="7">
-          Запустите обучение хотя бы пять раз с разными параметрами, чтобы заполнить протокол.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-  experimentsTable.innerHTML = state.experiments
-    .map(
-      (exp, index) => `
-      <tr>
-        <td>${state.experiments.length - index}</td>
-        <td>${exp.timestamp}</td>
-        <td>${exp.datasetSize}</td>
-        <td>${exp.classes}</td>
-        <td>${exp.epochs}</td>
-        <td>${exp.mse}</td>
-        <td>${exp.accuracy}%</td>
-      </tr>
-    `
-    )
-    .join("");
-}
-
-// Core perceptron logic
 function trainPerceptron(dataset, options) {
   const labels = [...new Set(dataset.map((sample) => sample.label))];
   const inputSize = dataset[0].pixels.length;
   const neurons = {};
 
+  // Initialize weights
   labels.forEach((label) => {
     neurons[label] = {
       weights: Array.from({ length: inputSize }, () =>
@@ -584,6 +363,7 @@ function trainPerceptron(dataset, options) {
   let mse = Number.MAX_VALUE;
   let epoch = 0;
 
+  // Training Loop
   while (epoch < options.maxEpochs && mse > options.targetError) {
     epoch += 1;
     let sumSq = 0;
@@ -591,14 +371,13 @@ function trainPerceptron(dataset, options) {
     dataset.forEach((sample) => {
       labels.forEach((label) => {
         const neuron = neurons[label];
-        const net =
-          dot(neuron.weights, sample.pixels) +
-          neuron.bias -
-          options.activationThreshold;
+        // Calculate Output
+        const net = dot(neuron.weights, sample.pixels) + neuron.bias - options.activationThreshold;
         const output = net >= 0 ? 1 : 0;
         const target = sample.label === label ? 1 : 0;
         const error = target - output;
 
+        // Weight Update (Delta Rule)
         if (error !== 0) {
           for (let i = 0; i < inputSize; i += 1) {
             neuron.weights[i] += options.learningRate * error * sample.pixels[i];
@@ -608,16 +387,15 @@ function trainPerceptron(dataset, options) {
 
         sumSq += error * error;
 
-        if (iterationLog.length < 200) {
+        // Logging
+        if (iterationLog.length < 100) {
           iterationLog.push({
             epoch,
             sample: sample.label,
             neuron: label,
             error,
             net: Number(net.toFixed(3)),
-            weights: neuron.weights
-              .slice(0, 5)
-              .map((w) => Number(w.toFixed(3))),
+            weights: neuron.weights.slice(0, 5).map(w => Number(w.toFixed(3)))
           });
         }
       });
@@ -630,14 +408,7 @@ function trainPerceptron(dataset, options) {
 
   const accuracy = evaluateAccuracy(dataset, neurons, options.activationThreshold);
 
-  return {
-    neurons,
-    history,
-    iterationLog,
-    mse,
-    epochs: epoch,
-    accuracy,
-  };
+  return { neurons, history, iterationLog, mse, epochs: epoch, accuracy };
 }
 
 function evaluateAccuracy(dataset, neurons, threshold) {
@@ -648,8 +419,7 @@ function evaluateAccuracy(dataset, neurons, threshold) {
   dataset.forEach((sample) => {
     const outputs = labels.map((label) => {
       const neuron = neurons[label];
-      const net =
-        dot(neuron.weights, sample.pixels) + neuron.bias - threshold;
+      const net = dot(neuron.weights, sample.pixels) + neuron.bias - threshold;
       return { label, net };
     });
     const predicted = outputs.reduce((best, current) =>
@@ -661,14 +431,130 @@ function evaluateAccuracy(dataset, neurons, threshold) {
   return total ? correct / total : 0;
 }
 
+function renderTrainingLog(entries) {
+  if (!entries.length) return;
+  const rows = entries.map(entry => `
+    <tr>
+      <td>${entry.epoch}</td>
+      <td>${entry.sample}</td>
+      <td>${entry.neuron}</td>
+      <td>${entry.net}</td>
+      <td>${entry.error}</td>
+      <td>[${entry.weights.join(", ")}]</td>
+    </tr>
+  `).join("");
+  
+  UI.trainingLog.innerHTML = `
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ЭПОХА</th><th>ОБРАЗЕЦ</th><th>НЕЙРОН</th><th>NET</th><th>ОШИБКА</th><th>ΔW (Первые 5)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderWeights(neurons) {
+  const labels = Object.keys(neurons);
+  const rows = labels.map(label => {
+    const neuron = neurons[label];
+    const preview = neuron.weights.slice(0, 6).map(w => w.toFixed(3)).join(", ");
+    return `
+      <tr>
+        <td>${label}</td>
+        <td>${neuron.bias.toFixed(3)}</td>
+        <td>${preview} ...</td>
+      </tr>
+    `;
+  }).join("");
+
+  UI.weightsTable.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>КЛАСС</th><th>СМЕЩЕНИЕ</th><th>ВЕСА (Первые 6)</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function copyWeightsToClipboard() {
+  if (!state.perceptron) {
+    alert("ОШИБКА: Обученная модель не найдена.");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(state.perceptron, null, 2));
+    alert("УСПЕХ: Веса нейросети скопированы в буфер обмена.");
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function resetTrainingOutputs() {
+  UI.inputSizeEl.textContent = "0";
+  UI.classCountEl.textContent = "0";
+  UI.epochCountEl.textContent = "0";
+  UI.finalMseEl.textContent = "—";
+  UI.trainingLog.innerHTML = "<p class='placeholder'>Ожидание последовательности обучения...</p>";
+  UI.weightsTable.innerHTML = "<p>Нет данных.</p>";
+}
+
+/* ==========================================================================
+   RECOGNITION MODULE
+   ========================================================================== */
+async function handleRecognition(event) {
+  event.preventDefault();
+  if (!state.perceptron) {
+    alert("ОШИБКА: Нейросеть не обучена.");
+    return;
+  }
+
+  const selectedId = UI.recognitionSelect.value;
+  const file = document.getElementById("recognition-file")?.files?.[0];
+  let vector, preview;
+  let width = state.imageWidth;
+  let height = state.imageHeight;
+
+  if (selectedId) {
+    const sample = state.dataset.find((item) => item.id === selectedId);
+    if (!sample) return;
+    vector = sample.pixels;
+    preview = sample.preview;
+    width = sample.width;
+    height = sample.height;
+  } else if (file) {
+    try {
+      const processed = await processImage(
+        file, width, height,
+        Number(document.getElementById("threshold")?.value || 128)
+      );
+      vector = processed.pixels;
+      preview = processed.preview;
+    } catch (e) {
+      alert("ОШИБКА: Сбой обработки изображения.");
+      return;
+    }
+  } else {
+    alert("ОШИБКА: Не выбран источник входных данных.");
+    return;
+  }
+
+  const results = predict(state.perceptron, vector);
+  UI.recognizedLabelEl.textContent = results.predicted;
+  renderRecognitionOutputsTable(results.detail);
+  renderRecognitionPreview(preview, width, height);
+}
+
 function predict(perceptron, vector) {
   const labels = Object.keys(perceptron.neurons);
   const detail = labels.map((label) => {
     const neuron = perceptron.neurons[label];
-    const net =
-      dot(neuron.weights, vector) +
-      neuron.bias -
-      perceptron.activationThreshold;
+    const net = dot(neuron.weights, vector) + neuron.bias - perceptron.activationThreshold;
     return {
       label,
       net,
@@ -683,20 +569,97 @@ function predict(perceptron, vector) {
   return { predicted, detail };
 }
 
-function dot(weights, inputs) {
-  let sum = 0;
-  for (let i = 0; i < weights.length; i += 1) {
-    sum += weights[i] * inputs[i];
+function updateRecognitionOptions() {
+  UI.recognitionSelect.innerHTML =
+    '<option value="">— Выберите источник —</option>' +
+    state.dataset.map(item => 
+      `<option value="${item.id}">${item.label} (${item.width}x${item.height})</option>`
+    ).join("");
+}
+
+function renderRecognitionPreview(preview, width, height) {
+  if (!preview) {
+    UI.recognitionPreview.innerHTML = "<p>Изображение не загружено.</p>";
+    return;
   }
-  return sum;
+  UI.recognitionPreview.innerHTML = `
+    <div>
+      <img src="${preview}" width="${width * 6}" height="${height * 6}" alt="Образец" />
+    </div>
+  `;
+}
+
+function renderRecognitionOutputsTable(detail) {
+  UI.recognitionOutputs.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>КЛАСС</th><th>NET</th><th>F(NET)</th></tr>
+      </thead>
+      <tbody>
+        ${detail.map(item => `
+          <tr>
+            <td>${item.label}</td>
+            <td>${item.net.toFixed(4)}</td>
+            <td>${item.output}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+/* ==========================================================================
+   EXPERIMENTS MODULE
+   ========================================================================== */
+function appendExperiment(result) {
+  const entry = {
+    id: Date.now(),
+    timestamp: new Date().toLocaleString("ru-RU"),
+    datasetSize: state.dataset.length,
+    classes: Object.keys(result.neurons).length,
+    epochs: result.epochs,
+    mse: Number(result.mse.toFixed(5)),
+    accuracy: Number((result.accuracy * 100).toFixed(1)),
+  };
+  state.experiments.unshift(entry);
+  state.experiments = state.experiments.slice(0, 12); // Keep last 12
+  saveState();
+  renderExperiments();
+}
+
+function renderExperiments() {
+  if (!state.experiments.length) {
+    UI.experimentsTable.innerHTML = `
+      <tr><td colspan="7">Экспериментальные данные отсутствуют. Запустите обучение для генерации логов.</td></tr>
+    `;
+    return;
+  }
+  UI.experimentsTable.innerHTML = state.experiments.map((exp, index) => `
+    <tr>
+      <td>${state.experiments.length - index}</td>
+      <td>${exp.timestamp}</td>
+      <td>${exp.datasetSize}</td>
+      <td>${exp.classes}</td>
+      <td>${exp.epochs}</td>
+      <td>${exp.mse}</td>
+      <td>${exp.accuracy}%</td>
+    </tr>
+  `).join("");
+}
+
+/* ==========================================================================
+   UTILITIES & HELPERS
+   ========================================================================== */
+function dot(weights, inputs) {
+  return weights.reduce((sum, w, i) => sum + w * inputs[i], 0);
 }
 
 function randomBetween(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-// Image helpers
-function imageFileToVector(file, width, height, threshold = 128) {
+// Image Processing Engine
+function processImage(file, width, height, threshold = 128) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -708,19 +671,23 @@ function imageFileToVector(file, width, height, threshold = 128) {
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
+          
           const { data } = ctx.getImageData(0, 0, width, height);
           const pixels = [];
           for (let i = 0; i < data.length; i += 4) {
-            const grayscale =
-              0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+            // Standard grayscale conversion
+            const grayscale = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
             pixels.push(grayscale >= threshold ? 1 : 0);
           }
+          
+          // Create preview
           const previewCanvas = document.createElement("canvas");
           previewCanvas.width = width * 8;
           previewCanvas.height = height * 8;
           const previewCtx = previewCanvas.getContext("2d");
           previewCtx.imageSmoothingEnabled = false;
           previewCtx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+          
           resolve({
             pixels,
             preview: previewCanvas.toDataURL("image/png"),
@@ -737,35 +704,37 @@ function imageFileToVector(file, width, height, threshold = 128) {
   });
 }
 
-function buildDemoSamples() {
-  const patterns = getDemoPatterns();
+// Cyber-Themed Demo Data
+function buildCyberSamples() {
+  const patterns = getCyberPatterns();
   return patterns.map((pattern) => {
-    const pixels = pattern.rows
-      .join("")
-      .split("")
-      .map((bit) => Number(bit));
-    const canvas = document.createElement("canvas");
+    const pixels = pattern.rows.join("").split("").map(Number);
+    
+    // Create preview manually from pattern
     const width = pattern.rows[0].length;
     const height = pattern.rows.length;
+    const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     const imageData = ctx.createImageData(width, height);
-    pixels.forEach((value, index) => {
-      const offset = index * 4;
-      const color = value ? 255 : 0;
-      imageData.data[offset] = color;
-      imageData.data[offset + 1] = color;
-      imageData.data[offset + 2] = color;
-      imageData.data[offset + 3] = 255;
+    
+    pixels.forEach((val, i) => {
+      const off = i * 4;
+      const col = val ? 255 : 0;
+      imageData.data[off] = col;
+      imageData.data[off+1] = col;
+      imageData.data[off+2] = col;
+      imageData.data[off+3] = 255;
     });
     ctx.putImageData(imageData, 0, 0);
+    
     const previewCanvas = document.createElement("canvas");
     previewCanvas.width = width * 8;
     previewCanvas.height = height * 8;
-    const previewCtx = previewCanvas.getContext("2d");
-    previewCtx.imageSmoothingEnabled = false;
-    previewCtx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+    const pCtx = previewCanvas.getContext("2d");
+    pCtx.imageSmoothingEnabled = false;
+    pCtx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
 
     return {
       id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
@@ -779,205 +748,220 @@ function buildDemoSamples() {
   });
 }
 
-function getDemoPatterns() {
+function getCyberPatterns() {
   return [
     {
-      label: "Крест-1",
+      label: "ЦЕЛЬ_ЗАХВАТ",
       rows: [
-        "00100100",
-        "00100100",
+        "00011000",
+        "00011000",
+        "00011000",
+        "11100111",
+        "11100111",
+        "00011000",
+        "00011000",
+        "00011000",
+      ],
+    },
+    {
+      label: "ЗАХВАТЧИК",
+      rows: [
+        "00011000",
         "00111100",
+        "01111110",
+        "11011011",
         "11111111",
-        "00111100",
         "00100100",
-        "00100100",
-        "00000000",
+        "01011010",
+        "10100101",
       ],
     },
     {
-      label: "Крест-2",
-      rows: [
-        "00011000",
-        "00011000",
-        "11111111",
-        "00011000",
-        "00011000",
-        "00011000",
-        "00011000",
-        "00000000",
-      ],
-    },
-    {
-      label: "Квадрат",
+      label: "БЛОК_ДАННЫХ",
       rows: [
         "11111111",
-        "10000001",
-        "10000001",
-        "10000001",
-        "10000001",
-        "10000001",
+        "10101010",
+        "10101010",
+        "11111111",
+        "10101010",
+        "10101010",
         "11111111",
         "00000000",
       ],
     },
     {
-      label: "Пустой квадрат",
+      label: "СИГНАЛ",
+      rows: [
+        "00000000",
+        "00011000",
+        "00100100",
+        "01000010",
+        "10000001",
+        "00000000",
+        "00011000",
+        "00011000",
+      ],
+    },
+    {
+      label: "ЯДРО_CPU",
       rows: [
         "11111111",
         "10000001",
         "10111101",
         "10100101",
+        "10100101",
         "10111101",
         "10000001",
         "11111111",
-        "00000000",
       ],
     },
     {
-      label: "Диагональ ↘",
+      label: "ЦИФРА_0",
       rows: [
-        "10000000",
-        "01000000",
-        "00100000",
-        "00010000",
-        "00001000",
-        "00000100",
-        "00000010",
-        "00000001",
+        "00111100",
+        "01100110",
+        "11000011",
+        "11000011",
+        "11000011",
+        "11000011",
+        "01100110",
+        "00111100",
       ],
     },
     {
-      label: "Диагональ ↗",
-      rows: [
-        "00000001",
-        "00000010",
-        "00000100",
-        "00001000",
-        "00010000",
-        "00100000",
-        "01000000",
-        "10000000",
-      ],
-    },
-    {
-      label: "Полоса вертикальная",
-      rows: [
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00000000",
-      ],
-    },
-    {
-      label: "Полоса горизонтальная",
-      rows: [
-        "00000000",
-        "11111111",
-        "11111111",
-        "00000000",
-        "00000000",
-        "00000000",
-        "11111111",
-        "11111111",
-      ],
-    },
-    {
-      label: "Буква L",
-      rows: [
-        "10000000",
-        "10000000",
-        "10000000",
-        "10000000",
-        "10000000",
-        "10000000",
-        "11111111",
-        "11111111",
-      ],
-    },
-    {
-      label: "Буква T",
-      rows: [
-        "11111111",
-        "11111111",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-        "00110000",
-      ],
-    },
-    {
-      label: "Буква U",
-      rows: [
-        "10000001",
-        "10000001",
-        "10000001",
-        "10000001",
-        "10000001",
-        "10000001",
-        "11111111",
-        "11111111",
-      ],
-    },
-    {
-      label: "Стрелка вправо",
+      label: "ЦИФРА_1",
       rows: [
         "00011000",
-        "00011100",
-        "11111110",
-        "11111111",
-        "11111110",
-        "00011100",
+        "00111000",
+        "01011000",
         "00011000",
+        "00011000",
+        "00011000",
+        "00011000",
+        "01111110",
+      ],
+    },
+    {
+      label: "МЕТКА_X",
+      rows: [
+        "11000011",
+        "11000011",
+        "01100110",
+        "00111100",
+        "00111100",
+        "01100110",
+        "11000011",
+        "11000011",
+      ],
+    },
+    {
+      label: "ПЛЮС",
+      rows: [
+        "00011000",
+        "00011000",
+        "00011000",
+        "11111111",
+        "11111111",
+        "00011000",
+        "00011000",
+        "00011000",
+      ],
+    },
+    {
+      label: "УГОЛ_L",
+      rows: [
+        "11000000",
+        "11000000",
+        "11000000",
+        "11000000",
+        "11000000",
+        "11111111",
+        "11111111",
         "00000000",
+      ],
+    },
+    {
+      label: "СБОЙ",
+      rows: [
+        "00000000",
+        "01100110",
+        "01100110",
+        "00000000",
+        "00011000",
+        "11000011",
+        "01111110",
+        "00000000",
+      ],
+    },
+    {
+      label: "СТРЕЛКА_ВВЕРХ",
+      rows: [
+        "00011000",
+        "00111100",
+        "01111110",
+        "11111111",
+        "00011000",
+        "00011000",
+        "00011000",
+        "00011000",
       ],
     },
   ];
 }
 
-// Chart
+// Chart Visualization
 function renderErrorChart(history) {
-  if (!errorChart) return;
-  const ctx = errorChart.getContext("2d");
-  ctx.clearRect(0, 0, errorChart.width, errorChart.height);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-  ctx.fillRect(0, 0, errorChart.width, errorChart.height);
+  if (!UI.errorChart) return;
+  const ctx = UI.errorChart.getContext("2d");
+  const { width, height } = UI.errorChart;
+  
+  // Clear & Background
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "rgba(0, 243, 255, 0.05)";
+  ctx.fillRect(0, 0, width, height);
 
   if (!history.length) return;
 
-  const padding = 30;
-  const maxEpoch = Math.max(...history.map((point) => point.epoch));
-  const maxMse = Math.max(...history.map((point) => point.mse));
-  const path = history.map((point) => {
-    const x =
-      padding +
-      ((point.epoch - 1) / Math.max(maxEpoch - 1, 1)) *
-        (errorChart.width - padding * 2);
-    const y =
-      errorChart.height -
-      padding -
-      (point.mse / (maxMse || 1)) * (errorChart.height - padding * 2);
+  const padding = 40;
+  const maxEpoch = Math.max(...history.map((p) => p.epoch));
+  const maxMse = Math.max(...history.map((p) => p.mse));
+  
+  // Map points
+  const points = history.map((point) => {
+    const x = padding + ((point.epoch - 1) / Math.max(maxEpoch - 1, 1)) * (width - padding * 2);
+    const y = height - padding - (point.mse / (maxMse || 1)) * (height - padding * 2);
     return { x, y };
   });
 
-  ctx.strokeStyle = "#a5b4fc";
+  // Draw Line
+  ctx.strokeStyle = "#00f3ff"; // Neon Cyan
   ctx.lineWidth = 2;
+  ctx.shadowColor = "#00f3ff";
+  ctx.shadowBlur = 10;
   ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
-  path.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+  ctx.moveTo(points[0].x, points[0].y);
+  points.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = "#c7d2fe";
-  ctx.font = "12px Inter";
-  ctx.fillText("Эпохи", errorChart.width - padding - 40, errorChart.height - 10);
+  // Labels
+  ctx.fillStyle = "#8a8a9b"; // Muted text
+  ctx.font = "12px Orbitron";
+  ctx.fillText("ЭПОХИ", width - padding - 50, height - 10);
+  
   ctx.save();
-  ctx.translate(12, padding + 20);
+  ctx.translate(15, padding + 30);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText("MSE", 0, 0);
   ctx.restore();
 }
+
+// Initialize System
+function migrateLegacyData() {
+  const legacyDataset = localStorage.getItem(LEGACY_KEYS.dataset);
+  if (legacyDataset && !localStorage.getItem(STORAGE_KEYS.dataset)) {
+    localStorage.setItem(STORAGE_KEYS.dataset, legacyDataset);
+  }
+}
+
+init();
