@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Персептрон — распознавание изображений</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__content">
+        <p class="hero__kicker">Проектирование интеллектуальных систем</p>
+        <h1>Распознавание изображений с помощью персептрона</h1>
+        <p class="hero__author">Учебный стенд для лабораторной работы</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="card lab" id="workspace">
+        <div class="lab__header">
+          <h2>Режимы обучения и распознавания</h2>
+          <p>
+            Используйте стенд, чтобы загрузить собственные изображения, обучить
+            персептрон и зафиксировать результаты. Все данные сохраняются в
+            памяти браузера.
+          </p>
+        </div>
+
+        <div class="tab-controls" role="tablist">
+          <button class="tab-btn active" data-tab="dataset" role="tab">
+            Обучающая выборка
+          </button>
+          <button class="tab-btn" data-tab="training" role="tab">
+            Обучение
+          </button>
+          <button class="tab-btn" data-tab="recognition" role="tab">
+            Распознавание
+          </button>
+        </div>
+
+        <div class="tab-panel active" data-panel="dataset" role="tabpanel">
+          <div class="grid two tight">
+            <form id="dataset-form" class="panel">
+              <h3>Загрузка изображений</h3>
+              <label>
+                Метка класса
+                <input
+                  type="text"
+                  id="sample-label"
+                  placeholder="Например, буква А"
+                  required
+                />
+              </label>
+              <label>
+                Чёрно-белое изображение
+                <input type="file" id="sample-file" accept="image/*" required />
+              </label>
+              <div class="grid two compact">
+                <label>
+                  Ширина (px)
+                  <input
+                    type="number"
+                    id="image-width"
+                    min="3"
+                    max="12"
+                    value="8"
+                    required
+                  />
+                </label>
+                <label>
+                  Высота (px)
+                  <input
+                    type="number"
+                    id="image-height"
+                    min="3"
+                    max="12"
+                    value="8"
+                    required
+                  />
+                </label>
+              </div>
+              <label>
+                Порог бинаризации (0–255)
+                <input
+                  type="number"
+                  id="threshold"
+                  min="0"
+                  max="255"
+                  value="128"
+                />
+              </label>
+              <div class="form-actions">
+                <button class="btn primary" type="submit">
+                  Добавить в выборку
+                </button>
+                <button
+                  class="btn secondary"
+                  type="button"
+                  id="add-sample-set"
+                >
+                  Загрузить демо-набор (12)
+                </button>
+                <button class="btn ghost" type="button" id="clear-dataset">
+                  Очистить
+                </button>
+              </div>
+              <p class="hint">
+                Требуется минимум 10 изображений. Поддерживаются разные
+                разрешения — считывается верхний левый блок размером N×M.
+              </p>
+            </form>
+
+            <div class="panel">
+              <h3>Состояние выборки</h3>
+              <p id="dataset-summary" class="summary">0 изображений</p>
+              <div id="dataset-list" class="dataset-list empty">
+                <p>Добавьте изображения или используйте демо-набор.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" data-panel="training" role="tabpanel">
+          <div class="grid two tight">
+            <form id="training-form" class="panel">
+              <h3>Параметры обучения</h3>
+              <label>
+                Скорость обучения η
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="1"
+                  value="0.2"
+                  id="learning-rate"
+                />
+              </label>
+              <label>
+                Максимум эпох
+                <input type="number" min="1" max="5000" value="200" id="max-epochs" />
+              </label>
+              <label>
+                Порог ошибки ε (MSE)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value="0.001"
+                  id="target-error"
+                />
+              </label>
+              <label>
+                Инициализация весов (±)
+                <input
+                  type="number"
+                  min="0.01"
+                  max="1"
+                  step="0.01"
+                  value="0.3"
+                  id="weight-range"
+                />
+              </label>
+              <label>
+                Активационный порог θ
+                <input
+                  type="number"
+                  step="0.1"
+                  value="0"
+                  id="activation-threshold"
+                />
+              </label>
+              <button class="btn primary" type="submit">Запустить обучение</button>
+              <p class="hint">
+                Веса и порог обновляются по дельта-правилу. Обучение завершится,
+                когда среднеквадратичная ошибка станет ниже ε или достигнут лимит эпох.
+              </p>
+            </form>
+
+            <div class="panel">
+              <h3>Протокол обучения</h3>
+              <div class="training-meta">
+                <p><strong>Входов:</strong> <span id="input-size">0</span></p>
+                <p><strong>Классов:</strong> <span id="class-count">0</span></p>
+                <p><strong>Эпох:</strong> <span id="epoch-count">0</span></p>
+                <p><strong>Итоговая MSE:</strong> <span id="final-mse">—</span></p>
+              </div>
+              <div id="training-log" class="log-table">
+                <p class="placeholder">
+                  Запустите обучение, чтобы увидеть прогресс по итерациям.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel weights-panel">
+            <div class="panel__header">
+              <h3>Веса и пороги нейронов</h3>
+              <button class="btn ghost" id="copy-weights" type="button">
+                Скопировать JSON
+              </button>
+            </div>
+            <div id="weights-table" class="weights-table">
+              <p>Результаты появятся после успешного обучения.</p>
+            </div>
+            <canvas id="error-chart" width="600" height="220" aria-label="График ошибки"></canvas>
+          </div>
+        </div>
+
+        <div class="tab-panel" data-panel="recognition" role="tabpanel">
+          <div class="grid two tight">
+            <form id="recognition-form" class="panel">
+              <h3>Распознаваемое изображение</h3>
+              <label>
+                Выбор из обучающей выборки
+                <select id="recognition-source">
+                  <option value="">— Не выбрано —</option>
+                </select>
+              </label>
+              <label>
+                Или загрузите новое изображение
+                <input type="file" id="recognition-file" accept="image/*" />
+              </label>
+              <button class="btn primary" type="submit">
+                Распознать образ
+              </button>
+              <p class="hint">
+                Если персептрон не был обучен, сначала выполните процедуру на вкладке
+                «Обучение».
+              </p>
+            </form>
+
+            <div class="panel recognition-result">
+              <h3>Результат распознавания</h3>
+              <div class="recognition-preview" id="recognition-preview">
+                <p>Изображение ещё не выбрано.</p>
+              </div>
+              <p>
+                <strong>Идентифицированный класс:</strong>
+                <span id="recognized-label">—</span>
+              </p>
+              <div id="recognition-outputs" class="outputs-table">
+                <p>После запуска появятся значения нейронов до/после активации.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="experiments">
+        <h2>Протоколы испытаний (5+)</h2>
+        <p>
+          После каждой сессии обучения фиксируйте параметры испытания, графики
+          ошибки и достижения/недостатки. Используйте таблицу и заметки ниже для
+          подготовки отчёта.
+        </p>
+        <div class="panel">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Дата/время</th>
+                  <th>Размер выборки</th>
+                  <th>Классов</th>
+                  <th>Эпох</th>
+                  <th>MSE</th>
+                  <th>Точность</th>
+                </tr>
+              </thead>
+              <tbody id="experiments-table">
+                <tr>
+                  <td colspan="7">
+                    Запустите обучение хотя бы пять раз с разными параметрами, чтобы
+                    заполнить протокол.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <label class="notes">
+            Черновик наблюдений
+            <textarea
+              id="experiment-notes"
+              rows="4"
+              placeholder="Фиксируйте гиперпараметры, выявленные ограничения, ошибки распознавания..."
+            ></textarea>
+          </label>
+        </div>
+      </section>
+
+      <section class="card" id="report">
+        <h2>Содержание отчёта</h2>
+        <div class="grid two tight">
+          <div>
+            <h3>Обязательные разделы</h3>
+            <ul>
+              <li>Название и цель работы</li>
+              <li>Описание предметной области и задачи распознавания</li>
+              <li>Блок-схема алгоритмов обучения и распознавания</li>
+              <li>
+                Протоколы 5+ экспериментов (таблицы, графики или скриншоты интерфейса)
+              </li>
+              <li>Выводы и рекомендации по использованию персептрона</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Дополнительные материалы</h3>
+            <ul>
+              <li>Исходный код программы и инструкции по запуску</li>
+              <li>Описание структуры данных и форматов изображений</li>
+              <li>Сравнение с альтернативными классификаторами (при наличии)</li>
+              <li>Перечень ограничений и идеи для улучшения</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      <p>© 2025 Проектирование интеллектуальных систем. Лаборатория персептрона.</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genetic Pathfinder | Интеллектуальные системы</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-project-diagram me-2"></i>Genetic Pathfinder</span>
+            <span class="navbar-text">
+                Проектирование интеллектуальных систем
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <!-- Header Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="jumbotron text-white mb-4">
+                    <h1 class="display-4">Генетический алгоритм</h1>
+                    <p class="lead">Интеллектуальный поиск кратчайшего пути в графе</p>
+                    <hr class="my-4" style="background-color: rgba(255,255,255,0.2);">
+                    <p>Демонстрация работы эволюционных вычислений на примере задачи маршрутизации.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Controls Section -->
+        <div class="row">
+            <!-- Network Settings -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-network-wired me-2"></i>Настройки сети</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="networkSize" class="form-label">Размер сети (узлы)</label>
+                            <input type="number" class="form-control" id="networkSize" value="8" min="4" max="16">
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="sender" class="form-label">Отправитель</label>
+                                <input type="number" class="form-control" id="sender" value="0" min="0">
+                            </div>
+                            <div class="col">
+                                <label for="receiver" class="form-label">Получатель</label>
+                                <input type="number" class="form-control" id="receiver" value="7" min="0">
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="createNetwork()">
+                                <i class="fas fa-plus me-2"></i>Создать сеть
+                            </button>
+                            <button class="btn btn-secondary" onclick="generateRandomNetwork()">
+                                <i class="fas fa-dice me-2"></i>Случайная сеть
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Algorithm Parameters -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-sliders-h me-2"></i>Параметры эволюции</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="populationSize" class="form-label">Популяция</label>
+                                <input type="number" class="form-control" id="populationSize" value="50" min="10" max="200">
+                            </div>
+                            <div class="col">
+                                <label for="maxGenerations" class="form-label">Поколения</label>
+                                <input type="number" class="form-control" id="maxGenerations" value="100" min="10" max="1000">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label for="mutationRate" class="form-label d-flex justify-content-between">
+                                <span>Вероятность мутации</span>
+                                <span id="mutationRateValue" class="badge bg-secondary">0.1</span>
+                            </label>
+                            <input type="range" class="form-range" id="mutationRate" min="0.01" max="0.5" step="0.01" value="0.1">
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label for="crossoverRate" class="form-label d-flex justify-content-between">
+                                <span>Вероятность скрещивания</span>
+                                <span id="crossoverRateValue" class="badge bg-secondary">0.8</span>
+                            </label>
+                            <input type="range" class="form-range" id="crossoverRate" min="0.1" max="1.0" step="0.05" value="0.8">
+                        </div>
+
+                        <div class="row mb-2">
+                            <div class="col">
+                                <label for="selectionMethod" class="form-label">Селекция</label>
+                                <select class="form-select form-select-sm" id="selectionMethod">
+                                    <option value="tournament">Турнирная</option>
+                                    <option value="roulette">Рулеточная</option>
+                                    <option value="rank">Ранговая</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label for="crossoverMethod" class="form-label">Скрещивание</label>
+                                <select class="form-select form-select-sm" id="crossoverMethod">
+                                    <option value="uniform">Однородное</option>
+                                    <option value="one_point">Одноточечное</option>
+                                    <option value="two_point">Двухточечное</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                             <label for="tournamentSize" class="form-label">Размер турнира</label>
+                             <input type="number" class="form-control form-control-sm" id="tournamentSize" value="3" min="2" max="10">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-gamepad me-2"></i>Управление</h5>
+                    </div>
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="mb-3">
+                            <label class="form-label">Режим работы</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="mode" id="cyclicMode" value="cyclic" checked>
+                                <label class="btn btn-outline-secondary" for="cyclicMode">Циклический</label>
+
+                                <input type="radio" class="btn-check" name="mode" id="stepMode" value="step">
+                                <label class="btn btn-outline-secondary" for="stepMode">Пошаговый</label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success btn-lg" id="runButton" onclick="runAlgorithm()">
+                                <i class="fas fa-play me-2"></i>Запустить
+                            </button>
+                            
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-info flex-grow-1" id="initStepButton" onclick="initStepMode()" style="display: none;">
+                                    <i class="fas fa-power-off me-2"></i>Инициализация
+                                </button>
+                                <button class="btn btn-warning flex-grow-1" id="stepButton" onclick="runStep()" disabled style="display: none;"> <!-- Hidden by default in cyclic mode -->
+                                    <i class="fas fa-step-forward me-2"></i>Шаг
+                                </button>
+                            </div>
+
+                            <button class="btn btn-danger" onclick="stopAlgorithm()">
+                                <i class="fas fa-stop me-2"></i>Остановить
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetAlgorithm()">
+                                <i class="fas fa-undo me-2"></i>Сброс
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="runExperiments()">
+                                <i class="fas fa-vial me-2"></i>Эксперименты
+                            </button>
+                        </div>
+
+                        <div class="mt-3 p-2 border rounded bg-dark">
+                             <div id="algorithmStatus" class="text-center">
+                                <span class="status-success"><i class="fas fa-check-circle me-1"></i>Готов к работе</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization & Charts -->
+        <div class="row mt-4">
+            <!-- Matrix Visualization -->
+            <div class="col-lg-5">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-th me-2"></i>Матрица смежности</h5>
+                    </div>
+                    <div class="card-body d-flex align-items-center justify-content-center">
+                        <div id="networkMatrix" class="network-matrix w-100">
+                            <div class="text-center text-muted p-5">
+                                <i class="fas fa-network-wired fa-3x mb-3"></i><br>
+                                Создайте сеть для отображения матрицы
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line me-2"></i>Динамика приспособленности</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="convergenceChart" style="height: 300px; width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clipboard-list me-2"></i>Результаты поиска</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="results">
+                            <p class="text-muted text-center py-4">
+                                <i class="fas fa-search fa-2x mb-3 d-block"></i>
+                                Результаты поиска пути появятся здесь
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step Mode Population (Hidden by default) -->
+        <div class="row mt-4" id="populationSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-users me-2"></i>Текущая популяция</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="populationDisplay" class="population-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experiments Results (Hidden by default) -->
+        <div class="row mt-4" id="experimentsSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-table me-2"></i>Результаты серии экспериментов</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="experimentsResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theory Section -->
+        <div class="row mt-4 mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-graduation-cap me-2"></i>Теоретическая справка</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="accordion" id="theoryAccordion">
+                            <!-- Theory Item 1 -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingOne">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                        <i class="fas fa-brain me-2"></i>Вычислительный интеллект и ГА
+                                    </button>
+                                </h2>
+                                <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#theoryAccordion">
+                                    <div class="accordion-body">
+                                        <p><strong>Генетические алгоритмы (ГА)</strong> — это эвристические алгоритмы поиска, используемые для решения задач оптимизации и моделирования путём случайного подбора, комбинирования и вариации искомых параметров с использованием механизмов, напоминающих биологическую эволюцию.</p>
+                                        <p>Ключевые особенности:</p>
+                                        <ul>
+                                            <li><strong>Адаптивность:</strong> приспособление к условиям задачи.</li>
+                                            <li><strong>Параллелизм:</strong> одновременный анализ множества решений (популяции).</li>
+                                            <li><strong>Робастность:</strong> устойчивость к шумам и локальным экстремумам.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Theory Item 2 -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingTwo">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                        <i class="fas fa-code-branch me-2"></i>Применение в задаче маршрутизации
+                                    </button>
+                                </h2>
+                                <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#theoryAccordion">
+                                    <div class="accordion-body">
+                                        <p>В задаче поиска кратчайшего пути:</p>
+                                        <ul>
+                                            <li><strong>Хромосома:</strong> последовательность узлов (путь).</li>
+                                            <li><strong>Фитнес-функция:</strong> обратная величина стоимости пути (чем короче путь, тем выше фитнес).</li>
+                                            <li><strong>Кроссовер:</strong> обмен участками путей между родителями.</li>
+                                            <li><strong>Мутация:</strong> случайное изменение промежуточного узла в пути.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                             <!-- Theory Item 3 -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingThree">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                        <i class="fas fa-history me-2"></i>Исторический контекст
+                                    </button>
+                                </h2>
+                                <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#theoryAccordion">
+                                    <div class="accordion-body">
+                                        <p>Эволюционные вычисления зародились в 1960-х годах. Основоположником генетических алгоритмов считается <strong>Джон Холланд</strong> (1975), который формализовал их в своей книге "Adaptation in Natural and Artificial Systems".</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer / Author Info -->
+        <footer class="author-info mb-4">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <h5 class="text-uppercase tracking-wide">Разработчик</h5>
+                    <p class="fs-5 mb-1"><strong>Данцаранов Владислав Баторович</strong></p>
+                    <p class="text-muted mb-3">dvbvladis@mail.ru</p>
+                    <div class="d-flex justify-content-center gap-4 text-secondary small">
+                        <span><i class="fas fa-university me-1"></i>Проектирование интеллектуальных систем</span>
+                        <span><i class="fas fa-chalkboard-teacher me-1"></i>Преподаватель: Кружалов А.С.</span>
+                        <span><i class="fas fa-calendar-alt me-1"></i>2025</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Application Logic -->
+    <script src="/static/js/network.js"></script>
+    <script src="/static/js/chromosome.js"></script>
+    <script src="/static/js/population.js"></script>
+    <script src="/static/js/genetic_algorithm.js"></script>
+    <script src="/static/js/experiments.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
