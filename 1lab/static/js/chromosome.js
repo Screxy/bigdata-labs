@@ -73,13 +73,8 @@ class Chromosome {
         const child2Genes = [];
         
         for (let i = 0; i < minLength; i++) {
-            if (Math.random() < 0.5) {
-                child1Genes.push(this.genes[i]);
-                child2Genes.push(other.genes[i]);
-            } else {
-                child1Genes.push(other.genes[i]);
-                child2Genes.push(this.genes[i]);
-            }
+            child1Genes.push(other.genes[i]);
+            child2Genes.push(this.genes[i]);
         }
         
         if (this.genes.length > minLength) {

@@ -68,9 +68,6 @@
                             <button class="btn btn-primary" onclick="createNetwork()">
                                 <i class="fas fa-plus me-2"></i>Создать сеть
                             </button>
-                            <button class="btn btn-secondary" onclick="generateRandomNetwork()">
-                                <i class="fas fa-dice me-2"></i>Случайная сеть
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -102,7 +99,7 @@
                             <input type="range" class="form-range" id="mutationRate" min="0.01" max="0.5" step="0.01" value="0.1">
                         </div>
                         
-                        <div class="mb-2">
+                        <div class="mb-2 hidden">
                             <label for="crossoverRate" class="form-label d-flex justify-content-between">
                                 <span>Вероятность скрещивания</span>
                                 <span id="crossoverRateValue" class="badge bg-secondary">0.8</span>
